@@ -47,6 +47,7 @@ export class EpubExtractor {
     public async getChapterListFromTOC(){
 
         const toc = await this.getTOC()
+        console.log(toc)
         
         const navMap = this.getChild(toc.ncx.children, `navMap`)
 
@@ -65,24 +66,40 @@ export class EpubExtractor {
              
         const chapterBuffer = await readFile(`${this.folder}${chapter.src}`)
 
-        const chapterJSON = x2j.convertXML(chapterBuffer.toString())
-    
+        const chapterText = this.removeDoctype(chapterBuffer.toString())
+
+        const chapterJSON = x2j.convertXML(chapterText)
+        
         const body = this.getChild(chapterJSON.html.children, `body`)
-    
-        const paragraphs = body.children.map(
-            (el) => this.extractText(el, 0)
+        
+        
+        let elements = body.children
+        
+        const divContainer = elements.find(el => el?.div?.class == `body`)
+
+        if(divContainer){
+            elements = divContainer.div.children
+        }
+
+        const paragraphs = elements.map(
+            (el) => this.extractText(el)
         ) as string[]
+
         
         return paragraphs.filter(p => p.length > 0)
     }
 
 
+    private removeDoctype(fileText){
+        const docTypeRegex = /<!DOCTYPE .*>/gm;
+
+        return fileText.replace(docTypeRegex, ``);
+    }
+
     private async getTOC(){
         const fileBuffer = await readFile(`${this.folder}toc.ncx`)
     
-        const docTypeRegex = /<!DOCTYPE .*>/gm;
-
-        const fileText = fileBuffer.toString().replace(docTypeRegex, ``);
+        const fileText = this.removeDoctype(fileBuffer.toString())
 
         const toc = x2j.convertXML(fileText)
     
@@ -103,7 +120,7 @@ export class EpubExtractor {
 
         const rootChapter : EpubChapter = {
             chapterTitle: this.formatString(text.content),
-            src: content.src
+            src: content.src.split(`#`)[0]
         }
 
         chapters.push(rootChapter)
@@ -122,7 +139,7 @@ export class EpubExtractor {
         return chapters
     }
 
-    private extractText(parentElement, depth){
+    private extractText(parentElement){
         let text = ""
         // console.log()
         // console.log()
@@ -139,7 +156,7 @@ export class EpubExtractor {
 
             if(element.children){
                 for(const childElement of element.children){
-                    text +=  this.extractText(childElement, depth++)
+                    text +=  this.extractText(childElement)
                 }
             }
 

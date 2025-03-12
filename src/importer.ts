@@ -26,22 +26,22 @@ type Book = {
 
 async function main (){
     const books : Book[] = [
-        {
-            id: `twok`,
-            folder: `./html/twok/`,
-        },
-        {
-            id: `wor`,
-            folder: `./html/wor/OEBPS/`,
-        },
-        {
-            id: `edge`,
-            folder: `./html/edge/`,
-        },
-        {
-            id: `ob`,
-            folder: `./html/ob/OEBPS`,
-        },
+        // {
+        //     id: `twok`,
+        //     folder: `./html/twok/`,
+        // },
+        // {
+        //     id: `wor`,
+        //     folder: `./html/wor/OEBPS/`,
+        // },
+        // {
+        //     id: `edge`,
+        //     folder: `./html/edge/`,
+        // },
+        // {
+        //     id: `ob`,
+        //     folder: `./html/ob/OEBPS/`,
+        // },
         {
             id: `dawn`,
             folder: `./html/dawn/OEBPS/`,
