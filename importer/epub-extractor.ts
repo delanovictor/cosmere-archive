@@ -1,6 +1,7 @@
 import {readFile, writeFile} from "node:fs/promises"
 import x2j from "simple-xml-to-json"
 import he from "he"
+import { file } from "googleapis/build/src/apis/file/index.js"
 
 type EpubChapter = {
     chapterTitle: string,
@@ -47,7 +48,6 @@ export class EpubExtractor {
     public async getChapterListFromTOC(){
 
         const toc = await this.getTOC()
-        console.log(toc)
         
         const navMap = this.getChild(toc.ncx.children, `navMap`)
 
@@ -72,13 +72,18 @@ export class EpubExtractor {
         
         const body = this.getChild(chapterJSON.html.children, `body`)
         
-        
         let elements = body.children
         
         const divContainer = elements.find(el => el?.div?.class == `body`)
 
         if(divContainer){
-            elements = divContainer.div.children
+            const sectionContainer = this.getChild(divContainer.div.children, `section`)
+
+            if(sectionContainer){
+                elements = sectionContainer.children
+            }else{
+                elements = divContainer.div.children
+            }
         }
 
         const paragraphs = elements.map(
@@ -91,9 +96,26 @@ export class EpubExtractor {
 
 
     private removeDoctype(fileText){
-        const docTypeRegex = /<!DOCTYPE .*>/gm;
 
-        return fileText.replace(docTypeRegex, ``);
+        let formattedText = fileText
+        
+        const startIndex = fileText.indexOf(`<!DOCTYPE`)
+        // console.log(`startIndex`, startIndex)
+
+        if(startIndex > -1){
+            const endIndex = fileText.indexOf(`>`, startIndex)
+            // console.log(`endIndex`, endIndex)
+
+            if(endIndex > -1){
+                formattedText = formattedText.substr(0, startIndex) + formattedText.substr(endIndex + 1);
+            }
+        }
+        // console.log(formattedText.substr(0, 400))
+
+        return formattedText
+        // const docTypeRegex = /<!DOCTYPE .*>/gs;
+
+        // return fileText.replace(docTypeRegex, ``);
     }
 
     private async getTOC(){
@@ -102,8 +124,8 @@ export class EpubExtractor {
         const fileText = this.removeDoctype(fileBuffer.toString())
 
         const toc = x2j.convertXML(fileText)
-    
-        await writeFile(`./toc-${Date.now().toString()}.json`, JSON.stringify(toc))
+
+        // await writeFile(`./toc-${Date.now().toString()}.json`, JSON.stringify(toc))
 
         return toc
     }
@@ -183,8 +205,14 @@ export class EpubExtractor {
         return formattedString
     }
 
-    private getChild(children, childKey){
-        return children.find(c => Object.keys(c).indexOf(childKey) > -1)[childKey]
+    private getChild(children : Array<any>, childKey : string){
+        const child = children.find(c => Object.keys(c).indexOf(childKey) > -1)
+
+        if(!child){
+            return
+        }
+
+        return child[childKey]
     }
     
 }

@@ -26,22 +26,22 @@ type Book = {
 
 async function main (){
     const books : Book[] = [
-        // {
-        //     id: `twok`,
-        //     folder: `./html/twok/`,
-        // },
-        // {
-        //     id: `wor`,
-        //     folder: `./html/wor/OEBPS/`,
-        // },
-        // {
-        //     id: `edge`,
-        //     folder: `./html/edge/`,
-        // },
-        // {
-        //     id: `ob`,
-        //     folder: `./html/ob/OEBPS/`,
-        // },
+        {
+            id: `twok`,
+            folder: `./html/twok/`,
+        },
+        {
+            id: `wor`,
+            folder: `./html/wor/OEBPS/`,
+        },
+        {
+            id: `edge`,
+            folder: `./html/edge/`,
+        },
+        {
+            id: `ob`,
+            folder: `./html/ob/OEBPS/`,
+        },
         {
             id: `dawn`,
             folder: `./html/dawn/OEBPS/`,
@@ -50,10 +50,6 @@ async function main (){
             id: `row`,
             folder: `./html/row/`,
         },
-        {
-            id: `wat`,
-            folder: `./html/wat/`,
-        }
     ]
 
     for(const book of books){
@@ -65,6 +61,7 @@ async function main (){
     
         const chapterList = tocChapters.filter(c => isValidChapter(c.chapterTitle))
         
+     
         for(let i = 0; i < chapterList.length; i++){
     
             const chapter = chapterList[i]
