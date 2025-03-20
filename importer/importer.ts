@@ -4,56 +4,67 @@ import sqlite3 from 'sqlite3'
 
 const db = new sqlite3.Database('./cosmere_archive.db');
 
+
+type Book = {
+    bookId: string,
+    name: string,
+    folder: string
+}
+
 type Chapter = {
-    chapter_uuid: string,
-    book_id: string,
-    chapter_index: number,
-    chapter_title: string,
+    chapterId: string,
+    bookId: string,
+    chapterNumber: number,
+    chapterTitle: string,
+    paragraphCount: number,
     src: string,
 }
 
 type Paragraph = {
-    book_id: string,
-    chapter_uuid: string,
-    paragraph_uuid: string,
+    bookId: string,
+    chapterId: string,
+    paragraphNumber: number,
     content: string,
 }
 
-type Book = {
-    id: string,
-    folder: string
-}
+
 
 async function main (){
     const books : Book[] = [
         {
-            id: `twok`,
+            bookId: `twok`,
+            name: `The Way of Kings`,
             folder: `./html/twok/`,
         },
         {
-            id: `wor`,
+            bookId: `wor`,
+            name: `Words of Radiance`,
             folder: `./html/wor/OEBPS/`,
         },
         {
-            id: `edge`,
+            bookId: `edge`,
+            name: `Edgedancer`,
             folder: `./html/edge/`,
         },
         {
-            id: `ob`,
+            bookId: `ob`,
+            name: `Oathbringer`,
             folder: `./html/ob/OEBPS/`,
         },
         {
-            id: `dawn`,
+            bookId: `dawn`,
+            name: `Dawnshard`,
             folder: `./html/dawn/OEBPS/`,
         },
         {
-            id: `row`,
+            bookId: `row`,
+            name: `Rhythm of War`,
             folder: `./html/row/`,
         },
     ]
 
     for(const book of books){
-        const BOOK_ID = book.id
+        const BOOK_ID = book.bookId
 
         const epubExtractor = new EpubExtractor({folder: book.folder})
 
@@ -61,28 +72,34 @@ async function main (){
     
         const chapterList = tocChapters.filter(c => isValidChapter(c.chapterTitle))
         
-     
+        const alreadyExists = await insertBook(book)
+        
+        if(alreadyExists){
+            continue
+        }
+
         for(let i = 0; i < chapterList.length; i++){
     
             const chapter = chapterList[i]
             
+            const paragraphs = await epubExtractor.getChapterParagraphs(chapter)
+
             console.log(`Chapter: ${chapter.chapterTitle}`)
     
             const dbChapter = await insertChapter({
-                book_id: BOOK_ID,
-                chapter_index: i,
-                chapter_title: chapter.chapterTitle.toUpperCase(),
-                chapter_uuid: randomUUID(),
+                bookId: BOOK_ID,
+                chapterNumber: i + 1,
+                chapterTitle: chapter.chapterTitle.toUpperCase(),
+                chapterId: randomUUID(),
+                paragraphCount: paragraphs.length,
                 src: chapter.src
             })
     
-            const paragraphs = await epubExtractor.getChapterParagraphs(chapter)
-    
-            const dbParagraphs : Paragraph[] = paragraphs.map((p) => {
+            const dbParagraphs : Paragraph[] = paragraphs.map((p, i) => {
                 return {
-                    chapter_uuid: dbChapter.chapter_uuid,
-                    paragraph_uuid: randomUUID(),
-                    book_id: dbChapter.book_id,
+                    chapterId: dbChapter.chapterId,
+                    bookId: dbChapter.bookId,
+                    paragraphNumber: i + 1,
                     content: p
                 }
             })
@@ -103,9 +120,9 @@ async function insertParagraphs(paragraphs : Paragraph[]) : Promise<void>{
     
         for(const paragraph of paragraphs){
             stmt.run(
-                paragraph.book_id, 
-                paragraph.chapter_uuid, 
-                paragraph.paragraph_uuid, 
+                paragraph.bookId, 
+                paragraph.chapterId, 
+                paragraph.paragraphNumber, 
                 paragraph.content, 
             );
         }
@@ -124,13 +141,14 @@ async function insertParagraphs(paragraphs : Paragraph[]) : Promise<void>{
 async function insertChapter(chapter : Chapter) : Promise<Chapter>{
     return new Promise((resolve, reject) => {
 
-        const stmt = db.prepare("INSERT INTO chapters VALUES (?, ?, ?, ?)");
+        const stmt = db.prepare("INSERT INTO chapters VALUES (?, ?, ?, ?, ?)");
 
         stmt.run(
-            chapter.chapter_uuid, 
-            chapter.book_id, 
-            chapter.chapter_index, 
-            chapter.chapter_title, 
+            chapter.chapterId, 
+            chapter.bookId, 
+            chapter.chapterNumber, 
+            chapter.chapterTitle,
+            chapter.paragraphCount 
         );
 
         stmt.finalize((error)=> {
@@ -138,6 +156,38 @@ async function insertChapter(chapter : Chapter) : Promise<Chapter>{
                 reject(error)
             }else{
                 resolve(chapter)
+            }
+        });
+    })
+}
+
+async function insertBook(book : Book) : Promise<boolean>{
+    return new Promise(async (resolve, reject) => {
+        console.log(book)
+
+        const row = await new Promise((res, rej) => {
+            db.get("SELECT bookId, name from books WHERE bookId = ?", [book.bookId], (err, response) => {
+                res(response)
+            });
+        })
+
+        if(row){
+            resolve(true)
+            return
+        }
+        
+        const insertStmt = db.prepare("INSERT INTO books VALUES (?, ?)");
+
+        insertStmt.run(
+            book.bookId, 
+            book.name
+        );
+
+        insertStmt.finalize((error)=> {
+            if(error){
+                reject(error)
+            }else{
+                resolve(false)
             }
         });
     })
