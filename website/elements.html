@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <title>Book Search Engine</title>
+    <style>
+        /* Apply dark color theme */
+        body {
+            background-color: #1a202c; /* Dark background color */
+            color: white; /* White text */
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: flex-start; /* Align items to the top */
+            align-items: center; /* Center horizontally */
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+            padding: 0 20px;
+        }
+
+        /* Container to wrap the search box and results */
+        .content-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            width: 100%;
+            max-width: 600px;
+        }
+
+        /* Style the search box */
+        .search-box {
+            width: 100%;
+            max-width: 600px;
+            margin-top: 20px; /* Add space above search box */
+            padding: 10px;
+            background-color: #2d3748; /* Dark background for search box */
+            border: 1px solid #4a5568; /* Light border */
+            border-radius: 8px;
+            color: white;
+            font-size: 16px;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            max-width: 100%; /* Ensure the input field doesn’t overflow */
+            padding: 10px;
+            border: 1px solid #4a5568;
+            border-radius: 8px;
+            background-color: #2d3748;
+            color: white;
+            font-size: 16px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #63b3ed; /* Light blue on focus */
+        }
+
+        /* Style the result container */
+        .results-container {
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            background-color: #2d3748;
+            border: 1px solid #4a5568;
+            border-radius: 8px;
+            display: none; /* Initially hidden, will be shown when results are available */
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background-color: #4a5568;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+        }
+
+        .result-item:last-child {
+            margin-bottom: 0;
+        }
+
+        button {
+            background-color: #63b3ed;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        button:hover {
+            background-color: #3182ce;
+        }
+    </style>
+</head>
+<body>
+    <div class="content-container"
+            x-data="{
+                search: '',
+
+                items: ['foo', 'bar', 'baz'],
+
+                get filteredItems() {
+                    return this.items.filter(
+                        i => i.startsWith(this.search)
+                    )
+                }
+            }"
+        >
+        <ul>
+            <template x-for="item in filteredItems" :key="item">
+                <li x-text="item"></li>
+            </template>
+        </ul>
+
+        <h1 class="text-2xl font-bold mb-4">Book Search Engine</h1>
+        
+        <!-- Search Box -->
+        <div class="search-box">
+            <input type="text" x-model="search" placeholder="Search for books..." />
+        </div>
+
+        <!-- Button to trigger search manually -->
+        <button @click="fetchResults()">Search</button>
+
+        <!-- Results Container -->
+        <div class="results-container" x-show="results.length > 0">
+            <template x-for="(result, index) in results" :key="index">
+                <div class="result-item" x-text="result"></div>
+            </template>
+        </div>
+    </div>
+
+    <script>
+      
+    </script>
+</body>
+</html>
