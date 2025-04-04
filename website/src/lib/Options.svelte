@@ -1,4 +1,6 @@
 <script lang="ts">
+  import _planetFilter from "./filter-by-planet.json"
+  import _seriesFilter from "./filter-by-series.json"
 
   type BookOption = {
     bookId: string,
@@ -6,164 +8,28 @@
     checked?: boolean
   }
   
-  type SeriesOptionGroup = {
+  type BookGrouping = {
     name: string,
     books: Array<BookOption>,
     checked?: boolean
   }
 
-  type Options = Array<BookOption | SeriesOptionGroup>
-
-  let options : Options = $state([
-    {
-      name: `Stormlight Archive`,
-      books: [
-        {
-            bookId: `twok`,
-            name: `The Way of Kings`,
-        },
-        {
-            bookId: `wor`,
-            name: `Words of Radiance`,
-        },
-        {
-            bookId: `edge`,
-            name: `Edgedancer`,
-        },
-        {
-            bookId: `ob`,
-            name: `Oathbringer`,
-        },
-        {
-            bookId: `dawn`,
-            name: `Dawnshard`,
-        },
-        {
-            bookId: `row`,
-            name: `Rhythm of War`,
-        },
-      ]
-    },
-    {
-      name: `Mistborn Era I`,
-      books: [
-        {
-            bookId: `tfe`,
-            name: `The Final Empire`,
-        },
-        {
-            bookId: `woa`,
-            name: `Well of Ascencion`,
-        },
-        {
-            bookId: `hoa`,
-            name: `Hero of Ages`,
-        }
-      ]
-    },
-    {
-      name: `Mistborn Era II`,
-      books: [
-        {
-            bookId: `taol`,
-            name: `The Alloy of Law`,
-        },
-        {
-            bookId: `sos`,
-            name: `Shadows of Self`,
-        },
-        {
-            bookId: `bom`,
-            name: `Bands of Mourning`,
-        },
-        {
-            bookId: `tlm`,
-            name: `The Lost Metal`,
-        }
-      ]
-    },
-    {
-      name: `Standalones`,
-      books: [ 
-        {
-          bookId: `wbk`,
-          name: `Warbreaker`,
-        },
-        {
-          bookId: `elt`,
-          name: `Elantris`,
-        },
-        {
-          bookId: `tress`,
-          name: `Tress of the Emerald Sea`,
-        },
-        {
-          bookId: `yumi`,
-          name: `Yumi and the Nightmare Painter`,
-        },
-        {
-          bookId: `tsm`,
-          name: `The Sunlit Man`,
-        },
-      ]
-    },
-    {
-      name: `Arcanum Unbounded`,
-      books: [
-        {
-            bookId: `tfe`,
-            name: `The Hope of Elantris`,
-        },
-        {
-            bookId: `tem`,
-            name: `The Eleventh Metal`,
-        },
-        {
-            bookId: `tes`,
-            name: `The Empereor's Soul`,
-        },
-        {
-            bookId: `jak`,
-            name: `Allomancer Jak and the Pits of Eltania`,
-        },
-        {
-            bookId: `sfsfh`,
-            name: `Shadows for Silence in the Forests of Hell`,
-        },
-        {
-            bookId: `sod`,
-            name: `Sixth of Dusk`,
-        },
-        {
-            bookId: `msh`,
-            name: `Mistborn: Secret History`,
-        }
-      ]
-    },
-  ])
+  const planetFilter = _planetFilter as Array<BookGrouping>
+  const seriesFilter = _seriesFilter as Array<BookGrouping>
+    
+  let currentFilter :  Array<BookGrouping> = $state(seriesFilter)
 
   let selectedOptions : string[] = []
   
 	$effect(() => {
     selectedOptions = []
-    for(const opt of options){
-
-      if(isBookOption(opt)){
-
-        if(opt.checked){
-          selectedOptions.push(opt.bookId)
-        }
-
-      }else{
-
-        for(const subOpt of opt.books){
-          if(subOpt.checked){
-            selectedOptions.push(subOpt.bookId)
-          }
+    for(const group of currentFilter){
+      for(const book of group.books){
+        if(book.checked){
+          selectedOptions.push(book.bookId)
         }
       }
     }
-    console.log(selectedOptions)
 	});
 
 
@@ -171,7 +37,34 @@
     return selectedOptions
   }
 
-  function handleGroupCheck(seriesOption: SeriesOptionGroup){
+  function switchFilterType(event : MouseEvent & {currentTarget: EventTarget & HTMLButtonElement}){
+    const target = event.target || event.srcElement;
+
+    //@ts-ignore
+    const id = target?.id
+
+    let newFilter : Array<BookGrouping> = []
+
+    if(id == `series-filter-button`){
+      newFilter = [...seriesFilter]
+    }else if(id == `planet-filter-button`){
+      newFilter = [...planetFilter]
+    }
+
+    for(const groupKey in newFilter){
+      for(const bookKey in newFilter[groupKey].books){
+        const book = newFilter[groupKey].books[bookKey]
+        
+        if(selectedOptions.indexOf(book.bookId) > -1){
+          book.checked = true
+        }
+      }
+    }
+
+    currentFilter = newFilter
+  }
+
+  function handleGroupCheck(seriesOption: BookGrouping){
     for(const book of seriesOption.books){
       book.checked = seriesOption.checked
     }
@@ -183,51 +76,118 @@
 
 </script>
 
-<div class="options-container">
-  {#each options as opt}
-    {#if isBookOption(opt)}
 
-    <div>
-      <label>
-        <input type="checkbox" bind:checked={opt.checked}/>
-        {opt.name}
-      </label>
-    </div>
+<div class="filter-container">
+  <div class="filter-type-container">
+    <div>Filter By</div>
+    <button id="series-filter-button" onclick={(e)=>switchFilterType(e)}>Series</button>
+    <button id="planet-filter-button" onclick={(e)=>switchFilterType(e)}>Planet</button>
+  </div>
 
-
-    {:else}
-    <div>
-      <label>
-        <input type="checkbox" bind:checked={opt.checked} onchange={(e)=> {handleGroupCheck(opt)}}/>
-        {opt.name}
-      </label>
-
-      <div class="suboptions-container">
-        {#each opt.books as subOpt}
-        <label>
-          <input type="checkbox" bind:checked={subOpt.checked} />
-          {subOpt.name}
-        </label>
-        {/each}
-      </div>
-    </div>
+  <div class="options-container">
     
-    {/if}
-  {/each}
+    {#each currentFilter as optionGroup}
+
+      <div class="parent-option-container">
+        <label class="parent-option">
+          <input type="checkbox"   bind:checked={optionGroup.checked} onchange={(e)=> {handleGroupCheck(optionGroup)}}/>
+          {optionGroup.name}
+        </label>
+
+        <div class="suboptions-container">
+          {#each optionGroup.books as option}
+          <label>
+            <input type="checkbox" bind:checked={option.checked} />
+            {option.name}
+          </label>
+          {/each}
+        </div>
+      </div>
+      
+    {/each}
+  </div>
 </div>
 
 <style>
 
+  @media (max-width: 800px) {
+    .options-container {
+      flex-direction: column;
+    }
+      
+    .filter-container {
+      flex-direction: row;
+      margin-top: 10px;
+    }
+  }
+
+  @media (min-width: 800px) {
+    .options-container {
+      flex-direction: row;
+    }
+
+    .filter-container {
+      flex-direction: row;
+      margin: 10px;
+    }
+  }
+
+  
+  .filter-container {
+    display: flex; /* or inline-flex */
+    justify-content: start;
+    flex-direction: column;
+    text-align: start;
+    padding: 10px;
+    background-color: #181818;
+    border-radius: 10px;
+  }
+
+  .filter-type-container {
+    display: flex; /* or inline-flex */
+    justify-content: start;
+    text-align: start;
+    flex-direction: row;
+  }
+
+  .filter-type-container > div {
+    text-align: center;
+    align-content: center;
+    margin-right: 10px;
+    margin-left: 30px;
+  }
+
+  .filter-type-container > button {
+    background-color: #3f4454;
+    margin-right: 10px;
+  }
+
   .options-container {
     display: flex; /* or inline-flex */
-    flex-direction: row;
     justify-content: space-around;
+    text-align: start;
+    padding: 10px;
+    margin: 10px;
+    background-color: #181818;
+    border-radius: 10px;
+  }
+
+  .parent-option-container{
+    padding: 10px;
+  }
+
+  .parent-option{
+    font-style: bold;
+    font-size: 16px;
   }
 
   .suboptions-container {
     display: flex; /* or inline-flex */
     flex-direction: column;
-    justify-content: flex-start
+    justify-content: flex-start;
+    text-align: start;
+    margin-left: 20px;
+    margin-top: 5px;
   }
 
 </style>

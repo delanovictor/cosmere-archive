@@ -74,6 +74,7 @@
           }
 
           for(const p of matchedParagraphs){
+            p.content = p.content.replaceAll(searchInput, `<b>${searchInput}</b>`)
             paragraphs.push({
               matchedParagraph: p,
               nextParagraph: adjacentParagraphsDict[p.paragraphId + 1],
@@ -99,7 +100,11 @@
       <img src={svelteLogo} class="logo svelte" alt="Svelte Logo" />
     </a>
   </div> -->
-  <h1>Cosmere Archive</h1>
+  <div class="title">
+    <h1>Cosmere Archive</h1>
+  </div>
+
+      
   <div class="search">
     <form
       onsubmit={async (e) => {
@@ -109,9 +114,10 @@
     >
       <input
         bind:value={searchInput}
+        class="search-input"
         type="text"
         id="search-input"
-        placeholder="Search for a phrase..."
+        placeholder="Ex: Hoid"
       />
       <button>Search</button>
     </form>
@@ -121,25 +127,25 @@
   </div>
 
 
+  <div class="search-result-container">
 
-  <div class="search-result">
     {#each paragraphs as item, index}
-      <div class="book-name">{@html item.matchedParagraph.bookName}</div>
+      <div class="search-result-item">
 
-      <div class="chapter-title">{item.matchedParagraph.chapterTitle}</div>
+        <div class="book-name">{@html item.matchedParagraph.bookName}</div>
+        <div class="chapter-title">{@html item.matchedParagraph.chapterTitle}</div>
 
-      {#if item.previousParagraph}
-        <div class="content">{@html item.previousParagraph.content}</div>
-        <br>
-      {/if}
-      
-      <div class="content">{item.matchedParagraph.content}</div>
+        {#if item.previousParagraph}
+          <div class="previous-paragraph content">{@html item.previousParagraph.content}</div>
+        {/if}
+        
+        <div class="matched-paragraph content">{@html item.matchedParagraph.content}</div>
 
-      {#if item.nextParagraph}
-        <br>
-        <div class="content">{@html item.nextParagraph.content}</div>
-      {/if}
-      <br>
+        {#if item.nextParagraph}
+          <div class="next-paragraph content">{@html item.nextParagraph.content}</div>
+        {/if}
+
+      </div>
     {/each}
   </div>
 
@@ -170,8 +176,70 @@
   .read-the-docs {
     color: #888;
   }
-  .search {
-    max-width: 70%;
-    width: 960px;
+
+  @media (max-width: 800px) {
+    main {
+      width: 100%;
+    }
   }
+
+  main {
+    display: flex; 
+    flex-direction: column;
+    justify-content: center;
+    max-width: calc(100% - 20px);
+  }
+
+  .title {
+    text-align: center;
+  }
+
+  .search {
+    text-align: center;
+  }
+
+  .search > form {
+    display: flex; 
+    flex-direction: row;
+    justify-content: start;
+  }
+
+  .search-result-container {
+    text-align: center;
+    align-self: center;
+  }
+
+  .search-result-item {
+    text-align: center;
+    border-radius: 24px;
+    margin:10px;
+    padding: 10px;
+    background: #3f4454;
+  }
+
+  .book-name {
+    text-align: start;
+    font-size: xx-large;
+  }
+
+  .chapter-title {
+    text-align: start;
+    font-size: x-large;
+  }
+
+  .content {
+    padding: 10px;
+  }
+
+  .search-input {
+    min-height: 44px;
+    border: 1px solid transparent;
+    background: #3f4454;
+    box-shadow: none;
+    border-radius: 24px;
+    width: 80%;
+    margin: 0px 20px 0px 10px;
+    padding: 0px 0px 0px 20px;
+  }
+
 </style>
