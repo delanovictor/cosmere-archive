@@ -36,18 +36,17 @@ func httpHandler(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Access-Control-Allow-Origin", "*")
 
-	if req.RequestURI == "/search" {
+	switch req.RequestURI {
+	case "/search":
 		handleSearchRequest(res, req)
-		return
-	}
-
-	if req.RequestURI == "/adjacent" {
+	case "/adjacent":
 		handleAdjacentRequest(res, req)
-		return
+	case "/count":
+		handleCountRequest(res, req)
+	default:
+		res.WriteHeader(http.StatusNotFound)
+		io.WriteString(res, "Route not Found!\n")
 	}
-
-	res.WriteHeader(http.StatusNotFound)
-	io.WriteString(res, "Route not Found!\n")
 }
 
 func handleSearchRequest(res http.ResponseWriter, req *http.Request) {
@@ -113,4 +112,34 @@ func handleAdjacentRequest(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "application/json")
 
 	json.NewEncoder(res).Encode(&searchResults)
+}
+
+func handleCountRequest(res http.ResponseWriter, req *http.Request) {
+	decoder := json.NewDecoder(req.Body)
+
+	var body database.CountRequest
+
+	err := decoder.Decode(&body)
+
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(body)
+
+	if len(body.SearchTerm) < 2 {
+		res.WriteHeader(http.StatusBadRequest)
+		io.WriteString(res, "SearchTerm lenght must be > 2\n")
+		return
+	}
+
+	countResults, err := database.GetSearchCount(body)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	res.Header().Set("Content-Type", "application/json")
+
+	json.NewEncoder(res).Encode(&countResults)
 }

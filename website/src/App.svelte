@@ -4,7 +4,7 @@
   import { fadeScale } from "./transitions";
 
 
-  type ResultByBook = {
+  type CountResult = {
     bookId          :string 
     bookName        :string 
     count           :number 
@@ -28,18 +28,7 @@
   }
 
 
-  let resultsByBook : Array<ResultByBook> = [
-    {
-      bookId: `twok`,
-      bookName: "The Way of Kings",
-      count : 15
-    },
-    {
-      bookId: `tfe`,
-      bookName: "The Final Empire",
-      count : 3
-    }
-  ]
+  let countResultByBook : CountResult[] = $state([])
 
   let notFound = $state(false)
 
@@ -48,81 +37,146 @@
 
   let paragraphs : Paragraphs [] = $state([])
 
-  async function searchForMatch() {
-      console.log(`searchForMatch`)
 
-      if (searchInput.length < 3) {
-          return;
+  async function handleSearch(){
+    console.log(`searchForMatch`)
+
+    if (searchInput.length < 3) {
+        return;
+    }
+
+    paragraphs = []
+
+    notFound = false
+
+    const matchedParagraphs : SearchResult[] = await searchForMatch()
+
+    if(matchedParagraphs && matchedParagraphs.length > 0) {
+
+      const adjacentParagraphs = await getAdjacentParagraphs(matchedParagraphs)
+
+      const adjacentParagraphsDict : Record<number, SearchResult> = {}
+
+      for(const p of adjacentParagraphs){
+          adjacentParagraphsDict[p.paragraphId] = p
+        }
+
+      for(const p of matchedParagraphs){
+        p.content = p.content.replaceAll(searchInput, `<b>${searchInput}</b>`)
+        paragraphs.push({
+          matchedParagraph: p,
+          nextParagraph: adjacentParagraphsDict[p.paragraphId + 1],
+          previousParagraph: adjacentParagraphsDict[p.paragraphId - 1],
+        })
       }
 
-      paragraphs = []
+      countResultByBook = await getSearchCount()
 
-      try {
-          const searchRequestData = {
-            method: `POST`,
-            body: JSON.stringify({
-              "searchTerm": searchInput, 
-              "limit" : 10, 
-              "offset": 0, 
-              "bookIds" : optionsElement.getSelectedOptions()
-            })
-          }
-
-          const searchResponse = await fetch(`http://localhost:8080/search`, searchRequestData)
-
-          if (!searchResponse.ok) {
-            console.log(`error`, searchResponse)
-            return
-          }
-
-          const matchedParagraphs : SearchResult[] = await searchResponse.json();
-
-          console.log('matchedParagraphs', matchedParagraphs)
-          
-          if(matchedParagraphs && matchedParagraphs.length > 0){
-            notFound = false
-
-            const adjacentParagraphIds = matchedParagraphs.flatMap((item) => [item.paragraphId - 1, item.paragraphId + 1])
-
-            const adjacentRequestData = {
-              method: `POST`,
-              body: JSON.stringify({
-                "paragraphIds" : adjacentParagraphIds
-              })
-            }
-            const adjacentResponse = await fetch(`http://localhost:8080/adjacent`, adjacentRequestData)
-
-            if (!adjacentResponse.ok) {
-              console.log(`error`, adjacentResponse)
-              return
-            }
-
-            const adjacentParagraphs : SearchResult[] = await adjacentResponse.json();
-            const adjacentParagraphsDict : Record<number, SearchResult> = {}
-
-            for(const p of adjacentParagraphs){
-              adjacentParagraphsDict[p.paragraphId] = p
-            }
-
-            for(const p of matchedParagraphs){
-              p.content = p.content.replaceAll(searchInput, `<b>${searchInput}</b>`)
-              paragraphs.push({
-                matchedParagraph: p,
-                nextParagraph: adjacentParagraphsDict[p.paragraphId + 1],
-                previousParagraph: adjacentParagraphsDict[p.paragraphId - 1],
-              })
-            }
-
-          } else {
-            notFound = true
-          }
-
-      } catch (error) {
-          console.error(error);
-      }
-
-      console.log(`paragraphs`, paragraphs)
+    }else {
+      notFound = true
+    }
+      
   }
+
+  async function searchForMatch() : Promise<SearchResult[]> {
+    try {
+
+        console.log(`searchForMatch`)
+
+        if (searchInput.length < 3) {
+            return [];
+        }
+
+        const searchRequestData = {
+          method: `POST`,
+          body: JSON.stringify({
+            "searchTerm": searchInput, 
+            "limit" : 10, 
+            "offset": 0, 
+            "bookIds" : optionsElement.getSelectedOptions()
+          })
+        }
+
+        const searchResponse = await fetch(`http://localhost:8080/search`, searchRequestData)
+
+        if (!searchResponse.ok) {
+          console.log(`error`, searchResponse)
+          return []
+        }
+
+        const matchedParagraphs : SearchResult[] = await searchResponse.json();
+
+        return matchedParagraphs
+
+    } catch (error) {
+        console.error(error);
+        return []
+    }
+
+  }
+
+  async function getAdjacentParagraphs(matchedParagraphs : SearchResult[])  : Promise<SearchResult[]>   {
+      try{
+        console.log('getAdjacentParagraphs')
+      
+        const adjacentParagraphIds = matchedParagraphs.flatMap((item) => [item.paragraphId - 1, item.paragraphId + 1])
+
+        const adjacentRequestData = {
+          method: `POST`,
+          body: JSON.stringify({
+            "paragraphIds" : adjacentParagraphIds
+          })
+        }
+        const adjacentResponse = await fetch(`http://localhost:8080/adjacent`, adjacentRequestData)
+
+        if (!adjacentResponse.ok) {
+          console.log(`error`, adjacentResponse)
+          return []
+        }
+
+        const adjacentParagraphs : SearchResult[] = await adjacentResponse.json();
+
+        return adjacentParagraphs
+
+      }catch(e){
+        console.log(e)
+        return []
+      }
+  }
+
+  async function getSearchCount()  : Promise<CountResult[]>   {
+    try {
+        console.log(`getSearchCount`)
+
+        if (searchInput.length < 3) {
+            return [];
+        }
+
+        const countRequestData = {
+          method: `POST`,
+          body: JSON.stringify({
+            "searchTerm": searchInput, 
+            "bookIds" : optionsElement.getSelectedOptions()
+          })
+        }
+
+        const countResponse = await fetch(`http://localhost:8080/count`, countRequestData)
+
+        if (!countResponse.ok) {
+          console.log(`error`, countResponse)
+          return []
+        }
+
+        const countResult : CountResult[] = await countResponse.json();
+
+        return countResult
+
+        } catch (error) {
+          console.error(error);
+          return []
+        }
+  }
+
 
 </script>
 
@@ -144,7 +198,7 @@
     <form
       onsubmit={async (e) => {
         e.preventDefault();
-        await searchForMatch();
+        await handleSearch();
       }}
     >
       <input
@@ -166,7 +220,7 @@
       <div class="result-count-container-title"> Results by Book</div>
     
 
-      {#each resultsByBook as item, index}
+      {#each countResultByBook as item, index}
         <div class="result-count-item">
           {item.bookName}: {item.count}
         </div>
