@@ -1,7 +1,10 @@
 <script lang="ts">
   import _planetFilter from "./filter-by-planet.json"
   import _seriesFilter from "./filter-by-series.json"
-
+	import { fade } from 'svelte/transition';
+  import { fadeScale } from "../transitions";
+  import { cubicInOut } from "svelte/easing";
+ 
   type BookOption = {
     bookId: string,
     name: string,
@@ -14,19 +17,28 @@
     checked?: boolean
   }
 
-  const planetFilter = _planetFilter as Array<BookGrouping>
-  const seriesFilter = _seriesFilter as Array<BookGrouping>
+  type OptionColumn = {
+    rows: Array<BookGrouping>
+  }
+
+  type Options = Array<OptionColumn>
+
+
+  const planetFilter = _planetFilter as Options
+  const seriesFilter = _seriesFilter as Options
     
-  let currentFilter :  Array<BookGrouping> = $state(seriesFilter)
+  let currentFilter : Options = $state(seriesFilter)
 
   let selectedOptions : string[] = []
   
 	$effect(() => {
     selectedOptions = []
-    for(const group of currentFilter){
-      for(const book of group.books){
-        if(book.checked){
-          selectedOptions.push(book.bookId)
+    for(const column of currentFilter){
+      for(const bookGrouping of column.rows){
+        for(const book of bookGrouping.books){
+          if(book.checked){
+            selectedOptions.push(book.bookId)
+          }
         }
       }
     }
@@ -43,7 +55,7 @@
     //@ts-ignore
     const id = target?.id
 
-    let newFilter : Array<BookGrouping> = []
+    let newFilter : Options = []
 
     if(id == `series-filter-button`){
       newFilter = [...seriesFilter]
@@ -51,12 +63,13 @@
       newFilter = [...planetFilter]
     }
 
-    for(const groupKey in newFilter){
-      for(const bookKey in newFilter[groupKey].books){
-        const book = newFilter[groupKey].books[bookKey]
-        
-        if(selectedOptions.indexOf(book.bookId) > -1){
-          book.checked = true
+    for(const column of newFilter){
+      for(const bookGrouping of column.rows){
+        for(const bookKey in bookGrouping.books){
+          const book = bookGrouping.books[bookKey]
+          if(selectedOptions.indexOf(book.bookId) > -1){
+            book.checked = true
+          }
         }
       }
     }
@@ -74,6 +87,7 @@
     return option.bookId !== undefined
   }
 
+
 </script>
 
 
@@ -84,26 +98,45 @@
     <button id="planet-filter-button" onclick={(e)=>switchFilterType(e)}>Planet</button>
   </div>
 
-  <div class="options-container">
+  <div 
+  transition:fadeScale={{
+		delay: 250,
+		duration: 500,
+		easing: cubicInOut,
+		baseScale: 0.5
+	}}
+  
+  class="options-container">
     
     {#each currentFilter as optionGroup}
 
-      <div class="parent-option-container">
-        <label class="parent-option">
-          <input type="checkbox"   bind:checked={optionGroup.checked} onchange={(e)=> {handleGroupCheck(optionGroup)}}/>
-          {optionGroup.name}
-        </label>
-
-        <div class="suboptions-container">
-          {#each optionGroup.books as option}
-          <label>
-            <input type="checkbox" bind:checked={option.checked} />
-            {option.name}
-          </label>
-          {/each}
-        </div>
-      </div>
+      <div 
       
+      class="column-container">
+        
+        {#each optionGroup.rows as row}
+
+        <div class="row-container">
+
+          <label class="parent-option">
+            <input type="checkbox"   bind:checked={row.checked} onchange={(e)=> {handleGroupCheck(row)}}/>
+            {row.name}
+          </label>
+
+          <div class="option-items-container">
+            {#each row.books as option}
+                <label>
+                  <input type="checkbox" bind:checked={option.checked} />
+                  {option.name}
+                </label>
+            {/each}
+          </div>
+
+        </div>
+
+        {/each}
+
+      </div>
     {/each}
   </div>
 </div>
@@ -113,6 +146,7 @@
   @media (max-width: 800px) {
     .options-container {
       flex-direction: column;
+      display: flex;
     }
       
     .filter-container {
@@ -124,6 +158,8 @@
   @media (min-width: 800px) {
     .options-container {
       flex-direction: row;
+      justify-content: space-evenly;
+      display: flex;
     }
 
     .filter-container {
@@ -132,13 +168,12 @@
     }
   }
 
-  
   .filter-container {
     display: flex; /* or inline-flex */
     justify-content: start;
     flex-direction: column;
     text-align: start;
-    padding: 10px;
+    padding: 10px 10px 30px 10px;
     background-color: #181818;
     border-radius: 10px;
   }
@@ -162,26 +197,29 @@
     margin-right: 10px;
   }
 
-  .options-container {
+  .column-container {
     display: flex; /* or inline-flex */
-    justify-content: space-around;
+    flex-direction: column;
     text-align: start;
-    padding: 10px;
-    margin: 10px;
+  
     background-color: #181818;
     border-radius: 10px;
   }
 
-  .parent-option-container{
-    padding: 10px;
+  .row-container {
+    display: flex; /* or inline-flex */
+    flex-direction: column;
+
+    padding-top: 10px;
   }
 
   .parent-option{
     font-style: bold;
     font-size: 16px;
+    padding: 10px;
   }
 
-  .suboptions-container {
+  .option-items-container {
     display: flex; /* or inline-flex */
     flex-direction: column;
     justify-content: flex-start;

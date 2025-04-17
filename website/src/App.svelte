@@ -1,5 +1,14 @@
 <script lang="ts">
+  import { cubicInOut } from 'svelte/easing';
   import Options from './lib/Options.svelte'
+  import { fadeScale } from "./transitions";
+
+
+  type ResultByBook = {
+    bookId          :string 
+    bookName        :string 
+    count           :number 
+  }
 
   type SearchResult = {
     bookId          :string 
@@ -18,18 +27,35 @@
     nextParagraph ?: SearchResult
   }
 
+
+  let resultsByBook : Array<ResultByBook> = [
+    {
+      bookId: `twok`,
+      bookName: "The Way of Kings",
+      count : 15
+    },
+    {
+      bookId: `tfe`,
+      bookName: "The Final Empire",
+      count : 3
+    }
+  ]
+
+  let notFound = $state(false)
+
   let searchInput = $state(``)
   let optionsElement : Options
 
   let paragraphs : Paragraphs [] = $state([])
 
   async function searchForMatch() {
-      paragraphs = []
       console.log(`searchForMatch`)
 
       if (searchInput.length < 3) {
           return;
       }
+
+      paragraphs = []
 
       try {
           const searchRequestData = {
@@ -51,35 +77,44 @@
 
           const matchedParagraphs : SearchResult[] = await searchResponse.json();
 
-          const adjacentParagraphIds = matchedParagraphs.flatMap((item) => [item.paragraphId - 1, item.paragraphId + 1])
+          console.log('matchedParagraphs', matchedParagraphs)
+          
+          if(matchedParagraphs && matchedParagraphs.length > 0){
+            notFound = false
 
-          const adjacentRequestData = {
-            method: `POST`,
-            body: JSON.stringify({
-              "paragraphIds" : adjacentParagraphIds
-            })
-          }
-          const adjacentResponse = await fetch(`http://localhost:8080/adjacent`, adjacentRequestData)
+            const adjacentParagraphIds = matchedParagraphs.flatMap((item) => [item.paragraphId - 1, item.paragraphId + 1])
 
-          if (!adjacentResponse.ok) {
-            console.log(`error`, adjacentResponse)
-            return
-          }
+            const adjacentRequestData = {
+              method: `POST`,
+              body: JSON.stringify({
+                "paragraphIds" : adjacentParagraphIds
+              })
+            }
+            const adjacentResponse = await fetch(`http://localhost:8080/adjacent`, adjacentRequestData)
 
-          const adjacentParagraphs : SearchResult[] = await adjacentResponse.json();
-          const adjacentParagraphsDict : Record<number, SearchResult> = {}
+            if (!adjacentResponse.ok) {
+              console.log(`error`, adjacentResponse)
+              return
+            }
 
-          for(const p of adjacentParagraphs){
-            adjacentParagraphsDict[p.paragraphId] = p
-          }
+            const adjacentParagraphs : SearchResult[] = await adjacentResponse.json();
+            const adjacentParagraphsDict : Record<number, SearchResult> = {}
 
-          for(const p of matchedParagraphs){
-            p.content = p.content.replaceAll(searchInput, `<b>${searchInput}</b>`)
-            paragraphs.push({
-              matchedParagraph: p,
-              nextParagraph: adjacentParagraphsDict[p.paragraphId + 1],
-              previousParagraph: adjacentParagraphsDict[p.paragraphId - 1],
-            })
+            for(const p of adjacentParagraphs){
+              adjacentParagraphsDict[p.paragraphId] = p
+            }
+
+            for(const p of matchedParagraphs){
+              p.content = p.content.replaceAll(searchInput, `<b>${searchInput}</b>`)
+              paragraphs.push({
+                matchedParagraph: p,
+                nextParagraph: adjacentParagraphsDict[p.paragraphId + 1],
+                previousParagraph: adjacentParagraphsDict[p.paragraphId - 1],
+              })
+            }
+
+          } else {
+            notFound = true
           }
 
       } catch (error) {
@@ -126,28 +161,70 @@
 
   </div>
 
+  {#if paragraphs.length > 0}
+    <div class="result-count-container">
+      <div class="result-count-container-title"> Results by Book</div>
+    
 
-  <div class="search-result-container">
+      {#each resultsByBook as item, index}
+        <div class="result-count-item">
+          {item.bookName}: {item.count}
+        </div>
+      
+      
+      {/each}
+    </div>
 
-    {#each paragraphs as item, index}
-      <div class="search-result-item">
+    
+    <div class="search-result-container">
+      {#each paragraphs as item, index}
+        <div 
+        transition:fadeScale={{
+          delay: 250,
+          duration: 500,
+          easing: cubicInOut,
+          baseScale: 0.5
+        }}
+        class="search-result-item">
 
-        <div class="book-name">{@html item.matchedParagraph.bookName}</div>
-        <div class="chapter-title">{@html item.matchedParagraph.chapterTitle}</div>
+          <div class="book-name">{@html item.matchedParagraph.bookName}</div>
+          <div class="chapter-title">{@html item.matchedParagraph.chapterTitle}</div>
 
-        {#if item.previousParagraph}
-          <div class="previous-paragraph content">{@html item.previousParagraph.content}</div>
-        {/if}
-        
-        <div class="matched-paragraph content">{@html item.matchedParagraph.content}</div>
+          {#if item.previousParagraph}
+            <div class="previous-paragraph content">{@html item.previousParagraph.content}</div>
+          {/if}
+          
+          <div 
+          transition:fadeScale={{
+            delay: 250,
+            duration: 500,
+            easing: cubicInOut,
+            baseScale: 0.5
+          }}
+          class="matched-paragraph content">{@html item.matchedParagraph.content}</div>
 
-        {#if item.nextParagraph}
-          <div class="next-paragraph content">{@html item.nextParagraph.content}</div>
-        {/if}
+          {#if item.nextParagraph}
+            <div class="next-paragraph content">{@html item.nextParagraph.content}</div>
+          {/if}
 
-      </div>
-    {/each}
-  </div>
+        </div>
+      {/each}
+    </div>
+
+    <div>
+      <button class="progress">Showing 50/110</button>
+    </div>
+
+    <div>
+      <button class="load-more">Load More</button>
+    </div>
+  {/if}
+
+  {#if notFound } 
+    <div class="no-results-container">
+      No results found
+    </div>
+  {/if}
 
   <p>
     Check out <a
@@ -183,11 +260,16 @@
     }
   }
 
+  @media (min-width: 801px) {
+    main {
+      width: calc(75% - 20px);
+    }
+  }
+
   main {
     display: flex; 
     flex-direction: column;
     justify-content: center;
-    max-width: calc(100% - 20px);
   }
 
   .title {
@@ -204,6 +286,30 @@
     justify-content: start;
   }
 
+
+  .no-results-container{
+    text-align: center;
+    align-self: center;
+    background: #3f4454;
+    border-radius: 14px;
+    padding: 20px;
+    margin: 10px;
+  }
+
+  .result-count-container{
+    text-align: center;
+    align-self: center;
+    background: #3f4454;
+    border-radius: 14px;
+    padding: 20px;
+    margin: 10px;
+  }
+
+  .result-count-container-title{
+    padding-bottom: 10px;
+    font-weight: bold;
+  }
+
   .search-result-container {
     text-align: center;
     align-self: center;
@@ -212,8 +318,8 @@
   .search-result-item {
     text-align: center;
     border-radius: 24px;
-    margin:10px;
-    padding: 10px;
+    margin: 10px 10px 30px 10px;
+    padding: 20px;
     background: #3f4454;
   }
 
