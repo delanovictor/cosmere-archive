@@ -3,7 +3,7 @@
   import Options from './lib/Options.svelte'
   import { fadeScale } from "./transitions";
   import BackToTop from './lib/BackToTop.svelte';
-
+  import { fade } from 'svelte/transition'
 
   type CountResult = {
     bookId          :string 
@@ -268,7 +268,7 @@
   </div>
 
   {#if paragraphs.length > 0}
-    <div class="result-count-container">
+    <div transition:fade class="result-count-container">
       <div class="result-count-container-title"> Results by Book</div>
     
 
@@ -286,7 +286,7 @@
     </div>
 
     
-    <div class="search-result-container">
+    <div transition:fade class="search-result-container">
       {#each paragraphs as item, index}
         <div 
         transition:fadeScale={{
@@ -322,15 +322,15 @@
     </div>
 
     {#if totalOfOccurances > limit + offset}
-      <div class="progress-container">
+      <div transition:fade class="progress-container">
         <div class="progress">Showing {limit + offset} of {totalOfOccurances} occurances</div>
       </div>
 
-      <div class="load-more-container">
+      <div transition:fade class="load-more-container">
         <button class="load-more" onclick={(e)=>handleLoadMore()} >Load More</button>
       </div>
     {:else}
-      <div class="progress-container">
+      <div  transition:fade class="progress-container">
         <div class="progress">Showing {totalOfOccurances} of {totalOfOccurances} occurances</div>
       </div>
     {/if}
@@ -338,7 +338,7 @@
   {/if}
 
   {#if notFound } 
-    <div class="no-results-container">
+    <div transition:fade  class="no-results-container">
       No results found
     </div>
   {/if}
