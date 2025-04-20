@@ -26,22 +26,33 @@
 
   const planetFilter = _planetFilter as Options
   const seriesFilter = _seriesFilter as Options
-    
-  let currentFilter : Options = $state(seriesFilter)
+  
+
+  let currentFilter : Options = $state(checkAll(seriesFilter))
+
+  
 
   let selectedOptions : string[] = []
   
 	$effect(() => {
+    console.log(`map selected options`)
     selectedOptions = []
     for(const column of currentFilter){
       for(const bookGrouping of column.rows){
+        let allChecked = true
+
         for(const book of bookGrouping.books){
           if(book.checked){
             selectedOptions.push(book.bookId)
           }
+
+          allChecked = (book.checked ?? false) && allChecked
         }
+
+        bookGrouping.checked = allChecked
       }
     }
+    console.log(selectedOptions)
 	});
 
 
@@ -62,18 +73,27 @@
     }else if(id == `planet-filter-button`){
       newFilter = [...planetFilter]
     }
+    console.log(`seriesFilter`,seriesFilter)
+    console.log(`planetFilter`,planetFilter)
 
     for(const column of newFilter){
       for(const bookGrouping of column.rows){
+        let allChecked = true
+
         for(const bookKey in bookGrouping.books){
           const book = bookGrouping.books[bookKey]
-          if(selectedOptions.indexOf(book.bookId) > -1){
-            book.checked = true
-          }
+
+          book.checked = selectedOptions.indexOf(book.bookId) > -1
+
+          allChecked = book.checked && allChecked
         }
+
+        bookGrouping.checked = allChecked
+
       }
     }
 
+    console.log(newFilter)
     currentFilter = newFilter
   }
 
@@ -83,10 +103,22 @@
     }
   }
 
-  function isBookOption(option: Record<string, any>) : option is BookOption {
-    return option.bookId !== undefined
-  }
+  function checkAll(opt : Options) : Options {
+    console.log(`checkAll`)
+    const optAllChecked = [...opt]
+    
+    for(const column of optAllChecked){
+      for(const bookGrouping of column.rows){
+        bookGrouping.checked = true
+        for(const bookKey in bookGrouping.books){
+          const book = bookGrouping.books[bookKey]
+          book.checked = true
+        }
+      }
+    }
 
+    return optAllChecked
+  }
 
 </script>
 

@@ -102,7 +102,8 @@ func GetSearchCount(params CountRequest) ([]*CountResult, error) {
 
 	query += `
 		AND p.content MATCH ? 
-		GROUP by p.bookId;
+		GROUP by p.bookId
+		ORDER by count DESC;
 	`
 
 	fmt.Println(query)

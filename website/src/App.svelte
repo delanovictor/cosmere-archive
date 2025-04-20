@@ -2,6 +2,7 @@
   import { cubicInOut } from 'svelte/easing';
   import Options from './lib/Options.svelte'
   import { fadeScale } from "./transitions";
+  import BackToTop from './lib/BackToTop.svelte';
 
 
   type CountResult = {
@@ -27,19 +28,26 @@
     nextParagraph ?: SearchResult
   }
 
+  const SEARCH_LIMIT = 50
+
 
   let countResultByBook : CountResult[] = $state([])
 
   let notFound = $state(false)
 
   let searchInput = $state(``)
+  let lastSearchInput = ``
+
   let optionsElement : Options
 
   let paragraphs : Paragraphs [] = $state([])
 
+  let totalOfOccurances = $state(0)
+  let limit = $state(SEARCH_LIMIT)
+  let offset = $state(0)
 
   async function handleSearch(){
-    console.log(`searchForMatch`)
+    console.log(`handleSearch`)
 
     if (searchInput.length < 3) {
         return;
@@ -47,10 +55,15 @@
 
     paragraphs = []
 
+    offset = 0;
+    limit = SEARCH_LIMIT 
+
     notFound = false
 
-    const matchedParagraphs : SearchResult[] = await searchForMatch()
+    const matchedParagraphs : SearchResult[] = await searchForMatch(searchInput)
 
+    lastSearchInput = searchInput
+    
     if(matchedParagraphs && matchedParagraphs.length > 0) {
 
       const adjacentParagraphs = await getAdjacentParagraphs(matchedParagraphs)
@@ -62,7 +75,7 @@
         }
 
       for(const p of matchedParagraphs){
-        p.content = p.content.replaceAll(searchInput, `<b>${searchInput}</b>`)
+        p.content = p.content.replaceAll(searchInput, `<mark>${searchInput}</mark>`)
         paragraphs.push({
           matchedParagraph: p,
           nextParagraph: adjacentParagraphsDict[p.paragraphId + 1],
@@ -78,21 +91,52 @@
       
   }
 
-  async function searchForMatch() : Promise<SearchResult[]> {
+  async function handleLoadMore() {
+    console.log(`handleLoadMore`)
+
+    offset += limit;
+
+    const matchedParagraphs : SearchResult[] = await searchForMatch(lastSearchInput)
+
+    if(matchedParagraphs && matchedParagraphs.length > 0) {
+
+      const adjacentParagraphs = await getAdjacentParagraphs(matchedParagraphs)
+
+      buildSearchResultCards(matchedParagraphs, adjacentParagraphs)
+
+    }
+      
+  }
+
+  async function buildSearchResultCards(matchedParagraphs:SearchResult[], adjacentParagraphs : SearchResult[]) {
+    const adjacentParagraphsDict : Record<number, SearchResult> = {}
+
+    for(const p of adjacentParagraphs){
+        adjacentParagraphsDict[p.paragraphId] = p
+      }
+
+    for(const p of matchedParagraphs){
+      p.content = p.content.replaceAll(searchInput, `<mark>${searchInput}</mark>`)
+      paragraphs.push({
+        matchedParagraph: p,
+        nextParagraph: adjacentParagraphsDict[p.paragraphId + 1],
+        previousParagraph: adjacentParagraphsDict[p.paragraphId - 1],
+      })
+    }
+  }
+
+
+  async function searchForMatch(searchTerm : string) : Promise<SearchResult[]> {
     try {
 
         console.log(`searchForMatch`)
 
-        if (searchInput.length < 3) {
-            return [];
-        }
-
         const searchRequestData = {
           method: `POST`,
           body: JSON.stringify({
-            "searchTerm": searchInput, 
-            "limit" : 10, 
-            "offset": 0, 
+            "searchTerm": searchTerm, 
+            "limit" : limit, 
+            "offset": offset, 
             "bookIds" : optionsElement.getSelectedOptions()
           })
         }
@@ -136,6 +180,7 @@
 
         const adjacentParagraphs : SearchResult[] = await adjacentResponse.json();
 
+
         return adjacentParagraphs
 
       }catch(e){
@@ -144,13 +189,15 @@
       }
   }
 
-  async function getSearchCount()  : Promise<CountResult[]>   {
+  async function getSearchCount()  : Promise<CountResult[]> {
     try {
         console.log(`getSearchCount`)
 
         if (searchInput.length < 3) {
             return [];
         }
+
+        totalOfOccurances = 0;
 
         const countRequestData = {
           method: `POST`,
@@ -169,12 +216,17 @@
 
         const countResult : CountResult[] = await countResponse.json();
 
+        totalOfOccurances = countResult.reduce(
+          (accumulator, currentValue) => accumulator + currentValue.count,
+          0,
+        )
+
         return countResult
 
-        } catch (error) {
-          console.error(error);
-          return []
-        }
+      } catch (error) {
+        console.error(error);
+        return []
+      }
   }
 
 
@@ -227,6 +279,10 @@
       
       
       {/each}
+
+      <div class="result-count-item">
+        <b>Total: {totalOfOccurances}</b>
+      </div>
     </div>
 
     
@@ -265,13 +321,20 @@
       {/each}
     </div>
 
-    <div>
-      <button class="progress">Showing 50/110</button>
-    </div>
+    {#if totalOfOccurances > limit + offset}
+      <div class="progress-container">
+        <div class="progress">Showing {limit + offset} of {totalOfOccurances} occurances</div>
+      </div>
 
-    <div>
-      <button class="load-more">Load More</button>
-    </div>
+      <div class="load-more-container">
+        <button class="load-more" onclick={(e)=>handleLoadMore()} >Load More</button>
+      </div>
+    {:else}
+      <div class="progress-container">
+        <div class="progress">Showing {totalOfOccurances} of {totalOfOccurances} occurances</div>
+      </div>
+    {/if}
+
   {/if}
 
   {#if notFound } 
@@ -289,6 +352,9 @@
   </p>
 
   <p class="read-the-docs">Click on the Vite and Svelte logos to learn more</p>
+
+  <BackToTop />
+
 </main>
 
 <style>
@@ -333,6 +399,16 @@
   .search {
     text-align: center;
   }
+
+  .progress-container {
+    text-align: center;
+    margin-bottom: 10px;
+  }
+
+  .load-more-container {
+    text-align: center;
+  }
+
 
   .search > form {
     display: flex; 
@@ -400,6 +476,16 @@
     width: 80%;
     margin: 0px 20px 0px 10px;
     padding: 0px 0px 0px 20px;
+  }
+
+  mark {
+    margin: 0 -0.4em;
+    padding: 0.1em 0.4em;
+    border-radius: 0.8em 0.3em;
+    background: transparent;
+    background-image:lavender;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
 
 </style>
