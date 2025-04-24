@@ -70,18 +70,7 @@
 
       const adjacentParagraphsDict : Record<number, SearchResult> = {}
 
-      for(const p of adjacentParagraphs){
-          adjacentParagraphsDict[p.paragraphId] = p
-        }
-
-      for(const p of matchedParagraphs){
-        p.content = p.content.replaceAll(searchInput, `<mark>${searchInput}</mark>`)
-        paragraphs.push({
-          matchedParagraph: p,
-          nextParagraph: adjacentParagraphsDict[p.paragraphId + 1],
-          previousParagraph: adjacentParagraphsDict[p.paragraphId - 1],
-        })
-      }
+      buildSearchResultCards(matchedParagraphs, adjacentParagraphs)
 
       countResultByBook = await getSearchCount()
 
@@ -111,18 +100,19 @@
   async function buildSearchResultCards(matchedParagraphs:SearchResult[], adjacentParagraphs : SearchResult[]) {
     const adjacentParagraphsDict : Record<number, SearchResult> = {}
 
+   
     for(const p of adjacentParagraphs){
-        adjacentParagraphsDict[p.paragraphId] = p
-      }
+          adjacentParagraphsDict[p.paragraphId] = p
+        }
 
-    for(const p of matchedParagraphs){
-      p.content = p.content.replaceAll(searchInput, `<mark>${searchInput}</mark>`)
-      paragraphs.push({
-        matchedParagraph: p,
-        nextParagraph: adjacentParagraphsDict[p.paragraphId + 1],
-        previousParagraph: adjacentParagraphsDict[p.paragraphId - 1],
-      })
-    }
+      for(const p of matchedParagraphs){
+        p.content = p.content.replaceAll(searchInput, `<span class="matched-word">${searchInput}</span>`)
+        paragraphs.push({
+          matchedParagraph: p,
+          nextParagraph: adjacentParagraphsDict[p.paragraphId + 1],
+          previousParagraph: adjacentParagraphsDict[p.paragraphId - 1],
+        })
+      }
   }
 
 
@@ -233,77 +223,54 @@
 </script>
 
 <main>
-  <!-- <div>
-    <a href="https://vite.dev" target="_blank" rel="noreferrer">
-      <img src={viteLogo} class="logo" alt="Vite Logo" />
-    </a>
-    <a href="https://svelte.dev" target="_blank" rel="noreferrer">
-      <img src={svelteLogo} class="logo svelte" alt="Svelte Logo" />
-    </a>
-  </div> -->
-  <div class="title">
-    <h1>Cosmere Archive</h1>
-  </div>
 
-      
-  <div class="search">
-    <form
-      onsubmit={async (e) => {
-        e.preventDefault();
-        await handleSearch();
-      }}
-    >
-      <input
-        bind:value={searchInput}
-        class="search-input"
-        type="text"
-        id="search-input"
-        placeholder="Ex: Hoid"
-      />
-      <button>Search</button>
-    </form>
-
-    <Options bind:this={optionsElement}></Options>
-
-  </div>
-
-  {#if paragraphs.length > 0}
-    <div transition:fade class="result-count-container">
-      <div class="result-count-container-title"> Results by Book</div>
-    
-
-      {#each countResultByBook as item, index}
-        <div class="result-count-item">
-          {item.bookName}: {item.count}
-        </div>
-      
-      
-      {/each}
-
-      <div class="result-count-item">
-        <b>Total: {totalOfOccurances}</b>
-      </div>
+    <div class="title">
+      <h1>Cosmere Archive</h1>
     </div>
-
-    
-    <div transition:fade class="search-result-container">
-      {#each paragraphs as item, index}
-        <div 
-        transition:fadeScale={{
-          delay: 250,
-          duration: 500,
-          easing: cubicInOut,
-          baseScale: 0.5
+  
+        
+    <div class="search">
+      <form
+        onsubmit={async (e) => {
+          e.preventDefault();
+          await handleSearch();
         }}
-        class="search-result-item">
-
-          <div class="book-name">{@html item.matchedParagraph.bookName}</div>
-          <div class="chapter-title">{@html item.matchedParagraph.chapterTitle}</div>
-
-          {#if item.previousParagraph}
-            <div class="previous-paragraph content">{@html item.previousParagraph.content}</div>
-          {/if}
-          
+      >
+        <input
+          bind:value={searchInput}
+          class="search-input"
+          type="text"
+          id="search-input"
+          placeholder="Ex: Hoid"
+        />
+        <button>Search</button>
+      </form>
+  
+      <Options bind:this={optionsElement}></Options>
+  
+    </div>
+  
+    {#if paragraphs.length > 0}
+      <div transition:fade class="result-count-container">
+        <div class="result-count-container-title"> Results by Book</div>
+      
+  
+        {#each countResultByBook as item, index}
+          <div class="result-count-item">
+            {item.bookName}: {item.count}
+          </div>
+        
+        
+        {/each}
+  
+        <div class="result-count-item">
+          <b>Total: {totalOfOccurances}</b>
+        </div>
+      </div>
+  
+      
+      <div transition:fade class="search-result-container">
+        {#each paragraphs as item, index}
           <div 
           transition:fadeScale={{
             delay: 250,
@@ -311,53 +278,72 @@
             easing: cubicInOut,
             baseScale: 0.5
           }}
-          class="matched-paragraph content">{@html item.matchedParagraph.content}</div>
-
-          {#if item.nextParagraph}
-            <div class="next-paragraph content">{@html item.nextParagraph.content}</div>
-          {/if}
-
+          class="search-result-item">
+  
+            <div class="book-name">{@html item.matchedParagraph.bookName}</div>
+            <div class="chapter-title">{@html item.matchedParagraph.chapterTitle}</div>
+  
+            {#if item.previousParagraph}
+              <div class="previous-paragraph content">{@html item.previousParagraph.content}</div>
+            {/if}
+            
+            <div 
+            transition:fadeScale={{
+              delay: 250,
+              duration: 500,
+              easing: cubicInOut,
+              baseScale: 0.5
+            }}
+            class="matched-paragraph content">{@html item.matchedParagraph.content}</div>
+  
+            {#if item.nextParagraph}
+              <div class="next-paragraph content">{@html item.nextParagraph.content}</div>
+            {/if}
+  
+          </div>
+        {/each}
+      </div>
+  
+      {#if totalOfOccurances > limit + offset}
+        <div transition:fade class="progress-container">
+          <div class="progress">Showing {limit + offset} of {totalOfOccurances} occurances</div>
         </div>
-      {/each}
-    </div>
-
-    {#if totalOfOccurances > limit + offset}
-      <div transition:fade class="progress-container">
-        <div class="progress">Showing {limit + offset} of {totalOfOccurances} occurances</div>
-      </div>
-
-      <div transition:fade class="load-more-container">
-        <button class="load-more" onclick={(e)=>handleLoadMore()} >Load More</button>
-      </div>
-    {:else}
-      <div  transition:fade class="progress-container">
-        <div class="progress">Showing {totalOfOccurances} of {totalOfOccurances} occurances</div>
+  
+        <div transition:fade class="load-more-container">
+          <button class="load-more" onclick={(e)=>handleLoadMore()} >Load More</button>
+        </div>
+      {:else}
+        <div  transition:fade class="progress-container">
+          <div class="progress">Showing {totalOfOccurances} of {totalOfOccurances} occurances</div>
+        </div>
+      {/if}
+  
+    {/if}
+  
+    {#if notFound } 
+      <div transition:fade  class="no-results-container">
+        No results found
       </div>
     {/if}
+  
 
-  {/if}
-
-  {#if notFound } 
-    <div transition:fade  class="no-results-container">
-      No results found
-    </div>
-  {/if}
-
-  <p>
-    Check out <a
-      href="https://github.com/sveltejs/kit#readme"
+  <!-- <p class="footer">
+    Created by <a
+      href="https://github.com/delanovictor"
       target="_blank"
-      rel="noreferrer">SvelteKit</a
-    >, the official Svelte app framework powered by Vite!
-  </p>
-
-  <p class="read-the-docs">Click on the Vite and Svelte logos to learn more</p>
+      rel="noreferrer">delanovictor</a
+    >
+  </p> -->
 
   <BackToTop />
 
 </main>
 
 <style>
+  .footer{
+    text-align: center;
+  }
+
   .logo {
     height: 6em;
     padding: 1.5em;
@@ -383,6 +369,10 @@
   @media (min-width: 801px) {
     main {
       width: calc(75% - 20px);
+    }
+
+    .search > form {
+      padding: 0px 10px 0px 10px;
     }
   }
 
@@ -413,7 +403,7 @@
   .search > form {
     display: flex; 
     flex-direction: row;
-    justify-content: start;
+    justify-content: space-between;
   }
 
 
@@ -473,19 +463,10 @@
     background: #3f4454;
     box-shadow: none;
     border-radius: 24px;
-    width: 80%;
-    margin: 0px 20px 0px 10px;
+    width: 100%;
+    margin: 0px 20px 0px 0px;
     padding: 0px 0px 0px 20px;
   }
 
-  mark {
-    margin: 0 -0.4em;
-    padding: 0.1em 0.4em;
-    border-radius: 0.8em 0.3em;
-    background: transparent;
-    background-image:lavender;
-    -webkit-box-decoration-break: clone;
-    box-decoration-break: clone;
-  }
 
 </style>

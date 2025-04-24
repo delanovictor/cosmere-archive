@@ -30,7 +30,7 @@
 
   let currentFilter : Options = $state(checkAll(seriesFilter))
 
-  
+  let currentFilterName = $state(`seriesFiter`)
 
   let selectedOptions : string[] = []
   
@@ -70,11 +70,13 @@
 
     if(id == `series-filter-button`){
       newFilter = [...seriesFilter]
+      currentFilterName = 'seriesFilter'
     }else if(id == `planet-filter-button`){
       newFilter = [...planetFilter]
+      currentFilterName = 'planetFilter'
     }
-    console.log(`seriesFilter`,seriesFilter)
-    console.log(`planetFilter`,planetFilter)
+
+    console.log(currentFilterName)
 
     for(const column of newFilter){
       for(const bookGrouping of column.rows){
@@ -126,8 +128,8 @@
 <div class="filter-container">
   <div class="filter-type-container">
     <div>Filter By</div>
-    <button id="series-filter-button" onclick={(e)=>switchFilterType(e)}>Series</button>
-    <button id="planet-filter-button" onclick={(e)=>switchFilterType(e)}>Planet</button>
+    <button id="series-filter-button" class={currentFilterName == 'seriesFilter' ? 'current-filter': `aa`} onclick={(e)=>switchFilterType(e)}>Series</button>
+    <button id="planet-filter-button" class={currentFilterName == 'planetFilter' ? 'current-filter': `bb`} onclick={(e)=>switchFilterType(e)}>Planet</button>
   </div>
 
   <div 
@@ -259,5 +261,10 @@
     margin-left: 20px;
     margin-top: 5px;
   }
+
+  .current-filter {
+    border-color: lavender;
+  }
+
 
 </style>
