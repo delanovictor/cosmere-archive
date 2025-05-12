@@ -3,7 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
-	"log"
+	"strconv"
 	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
@@ -38,6 +38,8 @@ type SearchRequest struct {
 	SearchTerm string   `json:"searchTerm"`
 	Offset     int      `json:"offset"`
 	Limit      int      `json:"limit"`
+	ExactMatch bool     `json:"exactMatch"`
+	StartsWith bool     `json:"startsWith"`
 }
 
 type SearchResult struct {
@@ -83,19 +85,14 @@ func GetSearchCount(params CountRequest) ([]*CountResult, error) {
 	`
 	var queryParams []any
 
-	//TODO: Parace burro, precisa checar o quanto impacta a performance
 	if len(params.BookIds) > 0 {
-		query += `AND p.bookId IN (`
+		query += `AND p.bookId`
 
-		for i := 0; i < len(params.BookIds); i++ {
-			query += `?,`
+		inQuery, inQueryParams := inStatementFromStringSlice(params.BookIds)
 
-			queryParams = append(queryParams, params.BookIds[i])
-		}
+		query += inQuery
 
-		query = strings.TrimRight(query, ",")
-
-		query += `)`
+		queryParams = append(queryParams, inQueryParams...)
 	}
 
 	queryParams = append(queryParams, params.SearchTerm)
@@ -112,9 +109,8 @@ func GetSearchCount(params CountRequest) ([]*CountResult, error) {
 	rows, err := db.Query(query, queryParams...)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error:  %w", err)
 	}
-	fmt.Println(rows)
 
 	defer rows.Close()
 
@@ -131,15 +127,14 @@ func GetSearchCount(params CountRequest) ([]*CountResult, error) {
 		)
 
 		if err != nil {
-			log.Fatal(err)
-			return nil, err
+			return nil, fmt.Errorf("error:  %w", err)
 		}
 
 		countResults = append(countResults, &countResult)
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error:  %w", err)
 	}
 
 	return countResults, nil
@@ -164,22 +159,33 @@ func SearchForString(params SearchRequest) ([]*SearchResult, error) {
 	`
 	var queryParams []any
 
-	//TODO: Parace burro, precisa checar o quanto impacta a performance
 	if len(params.BookIds) > 0 {
-		query += `AND p.bookId IN (`
+		query += `AND p.bookId`
 
-		for i := 0; i < len(params.BookIds); i++ {
-			query += `?,`
+		inQuery, inQueryParams := inStatementFromStringSlice(params.BookIds)
 
-			queryParams = append(queryParams, params.BookIds[i])
-		}
+		query += inQuery
 
-		query = strings.TrimRight(query, ",")
-
-		query += `)`
+		queryParams = append(queryParams, inQueryParams...)
 	}
 
-	queryParams = append(queryParams, params.SearchTerm)
+	if params.ExactMatch {
+		queryParams = append(queryParams, params.SearchTerm)
+	} else {
+		searchTermsList := strings.Split(params.SearchTerm, " ")
+		nearQuery := "NEAR("
+
+		for i := 0; i < len(searchTermsList); i++ {
+			nearQuery += `"`
+			nearQuery += searchTermsList[i]
+			nearQuery += `"`
+		}
+
+		nearQuery += ")"
+
+		queryParams = append(queryParams)
+	}
+
 	queryParams = append(queryParams, params.Limit)
 	queryParams = append(queryParams, params.Offset)
 
@@ -195,9 +201,8 @@ func SearchForString(params SearchRequest) ([]*SearchResult, error) {
 	rows, err := db.Query(query, queryParams...)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error:  %w", err)
 	}
-	fmt.Println(rows)
 
 	defer rows.Close()
 
@@ -220,15 +225,14 @@ func SearchForString(params SearchRequest) ([]*SearchResult, error) {
 		)
 
 		if err != nil {
-			log.Fatal(err)
-			return nil, err
+			return nil, fmt.Errorf("error:  %w", err)
 		}
 
 		searchResults = append(searchResults, &searchResult)
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error:  %w", err)
 	}
 
 	return searchResults, nil
@@ -253,19 +257,14 @@ func GetAdjacentParagraphs(params AdjacentRequest) ([]*SearchResult, error) {
 	`
 	var queryParams []any
 
-	//TODO: Parace burro, precisa checar o quanto impacta a performance
 	if len(params.ParagraphIds) > 0 {
-		query += `AND p.rowid IN (`
+		query += `AND p.rowid`
 
-		for i := 0; i < len(params.ParagraphIds); i++ {
-			query += `?,`
+		inQuery, inQueryParams := inStatementFromIntSlice(params.ParagraphIds)
 
-			queryParams = append(queryParams, params.ParagraphIds[i])
-		}
+		query += inQuery
 
-		query = strings.TrimRight(query, ",")
-
-		query += `)`
+		queryParams = append(queryParams, inQueryParams...)
 	}
 
 	fmt.Println(query)
@@ -274,9 +273,8 @@ func GetAdjacentParagraphs(params AdjacentRequest) ([]*SearchResult, error) {
 	rows, err := db.Query(query, queryParams...)
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error:  %w", err)
 	}
-	fmt.Println(rows)
 
 	defer rows.Close()
 
@@ -299,18 +297,44 @@ func GetAdjacentParagraphs(params AdjacentRequest) ([]*SearchResult, error) {
 		)
 
 		if err != nil {
-			log.Fatal(err)
-			return nil, err
+			return nil, fmt.Errorf("error:  %w", err)
 		}
 
 		searchResults = append(searchResults, &searchResult)
 	}
 
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error:  %w", err)
 	}
 
 	return searchResults, nil
+}
+
+func inStatementFromIntSlice(paramsList []int) (string, []any) {
+	var stringParamsList []string
+
+	for i := 0; i < len(paramsList); i++ {
+		stringParamsList = append(stringParamsList, strconv.Itoa(paramsList[i]))
+	}
+
+	return inStatementFromStringSlice(stringParamsList)
+}
+
+func inStatementFromStringSlice(paramsList []string) (string, []any) {
+	query := ` IN (`
+	var queryParams []any
+
+	for i := 0; i < len(paramsList); i++ {
+		query += `?,`
+
+		queryParams = append(queryParams, paramsList[i])
+	}
+
+	query = strings.TrimRight(query, ",")
+
+	query += `)`
+
+	return query, queryParams
 }
 
 func check(e error) {

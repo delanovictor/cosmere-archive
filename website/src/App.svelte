@@ -127,7 +127,9 @@
             "searchTerm": searchTerm, 
             "limit" : limit, 
             "offset": offset, 
-            "bookIds" : optionsElement.getSelectedOptions()
+            "bookIds" : optionsElement.getSelectedOptions(),
+            "exactMatch": true,
+            "startsWith": false
           })
         }
 
