@@ -56,6 +56,8 @@ type SearchResult struct {
 type CountRequest struct {
 	BookIds    []string `json:"bookIds"`
 	SearchTerm string   `json:"searchTerm"`
+	ExactMatch bool     `json:"exactMatch"`
+	StartsWith bool     `json:"startsWith"`
 }
 
 type CountResult struct {
@@ -95,7 +97,7 @@ func GetSearchCount(params CountRequest) ([]*CountResult, error) {
 		queryParams = append(queryParams, inQueryParams...)
 	}
 
-	queryParams = append(queryParams, params.SearchTerm)
+	queryParams = append(queryParams, advanceSearchTerms(params.SearchTerm, params.ExactMatch, params.StartsWith))
 
 	query += `
 		AND p.content MATCH ? 
@@ -169,22 +171,7 @@ func SearchForString(params SearchRequest) ([]*SearchResult, error) {
 		queryParams = append(queryParams, inQueryParams...)
 	}
 
-	if params.ExactMatch {
-		queryParams = append(queryParams, params.SearchTerm)
-	} else {
-		searchTermsList := strings.Split(params.SearchTerm, " ")
-		nearQuery := "NEAR("
-
-		for i := 0; i < len(searchTermsList); i++ {
-			nearQuery += `"`
-			nearQuery += searchTermsList[i]
-			nearQuery += `"`
-		}
-
-		nearQuery += ")"
-
-		queryParams = append(queryParams)
-	}
+	queryParams = append(queryParams, advanceSearchTerms(params.SearchTerm, params.ExactMatch, params.StartsWith))
 
 	queryParams = append(queryParams, params.Limit)
 	queryParams = append(queryParams, params.Offset)
@@ -308,6 +295,26 @@ func GetAdjacentParagraphs(params AdjacentRequest) ([]*SearchResult, error) {
 	}
 
 	return searchResults, nil
+}
+
+func advanceSearchTerms(searchTerm string, exactMatch bool, startsWith bool) string {
+
+	var sb strings.Builder
+
+	if startsWith {
+		sb.WriteString(`^ `)
+	}
+
+	if exactMatch {
+
+		sb.WriteString(`"`)
+		sb.WriteString(searchTerm)
+		sb.WriteString(`"`)
+	} else {
+		sb.WriteString(searchTerm)
+	}
+
+	return sb.String()
 }
 
 func inStatementFromIntSlice(paramsList []int) (string, []any) {

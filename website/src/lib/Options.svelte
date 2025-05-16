@@ -177,7 +177,7 @@
 
 <style>
 
-  @media (max-width: 800px) {
+  @media (max-width: 1000px) {
     .options-container {
       flex-direction: column;
       display: flex;
@@ -189,7 +189,7 @@
     }
   }
 
-  @media (min-width: 800px) {
+  @media (min-width: 1001px) {
     .options-container {
       flex-direction: row;
       justify-content: space-evenly;
