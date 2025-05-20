@@ -1,7 +1,6 @@
 import {readFile, writeFile} from "node:fs/promises"
 import x2j from "simple-xml-to-json"
 import he from "he"
-import { file } from "googleapis/build/src/apis/file/index.js"
 
 type EpubChapter = {
     chapterTitle: string,
@@ -10,6 +9,11 @@ type EpubChapter = {
 
 type NewEpubExtractor = {
     folder : string
+}
+
+type ExtractedParagraph = {
+    original: string,
+    clean: string
 }
 
 export class EpubExtractor {
@@ -62,7 +66,7 @@ export class EpubExtractor {
         return chapters
     }
 
-    public async getChapterParagraphs(chapter : EpubChapter) : Promise<string[]> {
+    public async getChapterParagraphs(chapter : EpubChapter) : Promise<ExtractedParagraph[]> {
              
         const chapterBuffer = await readFile(`${this.folder}${chapter.src}`)
 
@@ -88,10 +92,10 @@ export class EpubExtractor {
 
         const paragraphs = elements.map(
             (el) => this.extractText(el)
-        ) as string[]
+        ) as ExtractedParagraph[]
 
         
-        return paragraphs.filter(p => p.length > 0)
+        return paragraphs.filter(p => p.original.length > 0)
     }
 
 
@@ -141,7 +145,7 @@ export class EpubExtractor {
         const content = this.getChild(navPoint.children, `content`)
 
         const rootChapter : EpubChapter = {
-            chapterTitle: this.formatString(text.content),
+            chapterTitle: this.sanitizeString(text.content),
             src: content.src.split(`#`)[0]
         }
 
@@ -161,8 +165,12 @@ export class EpubExtractor {
         return chapters
     }
 
-    private extractText(parentElement){
-        let text = ""
+    private extractText(parentElement) : ExtractedParagraph {
+        const p : ExtractedParagraph = {
+            clean : ``,
+            original: ``
+        }
+
         // console.log()
         // console.log()
         // console.log(`[${depth}] Sou o elemento:`, parentElement)
@@ -173,30 +181,38 @@ export class EpubExtractor {
             // console.log(`Esse eh um dos meus filhos:`, element)
 
             if(key == `content`){
-                text += element
+                p.clean += element
+                p.original += element
             }
 
             if(element.children){
                 for(const childElement of element.children){
-                    text +=  this.extractText(childElement)
+                    const childP = this.extractText(childElement)
+
+                    p.clean += childP.clean
+                    p.original += childP.original
                 }
             }
 
             if(element.content){
+                p.clean += element.content
+
                 if(this.ITALIC_CLASSES.indexOf(element.class) > -1){
-                    text += `<i>${element.content}</i>`    
+                    p.original += `<i>${element.content}</i>`    
                 }else if(this.BOLD_CLASSES.indexOf(element.class) > -1){
-                    text += `<b>${element.content}</b>`    
+                    p.original += `<b>${element.content}</b>`    
                 }else {
-                    text += element.content 
+                    p.original += element.content 
                 }
             }
         }
 
-        return text
+        p.clean = this.sanitizeString(p.clean)
+        p.original = this.sanitizeString(p.original)
+        return p
     }
 
-    private formatString(string){
+    private sanitizeString(string){
 
         let formattedString = he.decode(string)
     

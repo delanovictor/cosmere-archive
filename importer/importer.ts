@@ -2,7 +2,7 @@ import { EpubExtractor } from "./epub-extractor.ts"
 import {randomUUID} from 'node:crypto'
 import sqlite3 from 'sqlite3'
 
-const db = new sqlite3.Database('./cosmere_archive.db');
+const db = new sqlite3.Database('../db/cosmere_archive.db');
 
 
 type Book = {
@@ -25,41 +25,43 @@ type Paragraph = {
     chapterId: string,
     paragraphNumber: number,
     content: string,
+    originalContent: string
 }
 
 
+const HTML_FOLDER = `../html`
 
 async function main (){
     const books : Book[] = [
         {
             bookId: `twok`,
             name: `The Way of Kings`,
-            folder: `./html/twok/`,
+            folder: `${HTML_FOLDER}/twok/`,
         },
         {
             bookId: `wor`,
             name: `Words of Radiance`,
-            folder: `./html/wor/OEBPS/`,
+            folder: `${HTML_FOLDER}/wor/OEBPS/`,
         },
         {
             bookId: `edge`,
             name: `Edgedancer`,
-            folder: `./html/edge/`,
+            folder: `${HTML_FOLDER}/edge/`,
         },
         {
             bookId: `ob`,
             name: `Oathbringer`,
-            folder: `./html/ob/OEBPS/`,
+            folder: `${HTML_FOLDER}/ob/OEBPS/`,
         },
         {
             bookId: `dawn`,
             name: `Dawnshard`,
-            folder: `./html/dawn/OEBPS/`,
+            folder: `${HTML_FOLDER}/dawn/OEBPS/`,
         },
         {
             bookId: `row`,
             name: `Rhythm of War`,
-            folder: `./html/row/`,
+            folder: `${HTML_FOLDER}/row/`,
         },
     ]
 
@@ -100,7 +102,8 @@ async function main (){
                     chapterId: dbChapter.chapterId,
                     bookId: dbChapter.bookId,
                     paragraphNumber: i + 1,
-                    content: p
+                    content: p.clean,
+                    originalContent: p.original
                 }
             })
     
@@ -111,22 +114,46 @@ async function main (){
     }
 }
 
-
+async function runAndGetId(stmt : sqlite3.Statement, params : any[]) : Promise<number> {
+    return new Promise((res, rej) => {
+        stmt.run(params, function (error) {
+            if(error){
+                rej(-1)
+            }else{
+                res(this.lastID)
+            }
+        })
+    })
+}
 async function insertParagraphs(paragraphs : Paragraph[]) : Promise<void>{
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
         console.log(`Inserindo ${paragraphs.length} paragrafos...`)
     
         const stmt = db.prepare("INSERT INTO paragraphs VALUES (?, ?, ?, ?)");
     
         for(const paragraph of paragraphs){
-            stmt.run(
+            const id = await runAndGetId(stmt, [
                 paragraph.bookId, 
                 paragraph.chapterId, 
                 paragraph.paragraphNumber, 
                 paragraph.content, 
-            );
+            ])
+
+            if(id > 0) {
+
+                const stmt2 = db.prepare("INSERT INTO original_paragraphs VALUES (?, ?)");
+                
+                stmt2.run(
+                    id,
+                    paragraph.originalContent, 
+                );
+        
+            }else{
+                throw new Error(`Error inserting paragraphs`)
+            }
         }
-    
+
+     
         stmt.finalize((error)=> {
             if(error){
                 reject(error)

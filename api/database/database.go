@@ -69,7 +69,7 @@ type CountResult struct {
 var db *sql.DB
 
 func init() {
-	_db, err := sql.Open("sqlite3", "./cosmere_archive.db")
+	_db, err := sql.Open("sqlite3", "../db/cosmere_archive.db")
 
 	check(err)
 
