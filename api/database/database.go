@@ -150,13 +150,14 @@ func SearchForString(params SearchRequest) ([]*SearchResult, error) {
 			p.chapterId, 
 			p.rowid, 
 			p.paragraphNumber, 
-			p.content,
+			op.originalContent,
 			c.chapterTitle,
 			c.paragraphCount,
 			b.name
 		FROM paragraphs p 
 		INNER JOIN chapters c ON p.chapterId = c.chapterId 
-		INNER JOIN books b ON c.bookId = b.bookId 
+		INNER JOIN books b ON c.bookId = b.bookId
+		INNER JOIN original_paragraphs op ON op.rowid = p.rowid
 		WHERE 1=1
 	`
 	var queryParams []any
@@ -233,13 +234,14 @@ func GetAdjacentParagraphs(params AdjacentRequest) ([]*SearchResult, error) {
 			p.chapterId, 
 			p.rowid, 
 			p.paragraphNumber, 
-			p.content,
+			op.originalContent,
 			c.chapterTitle,
 			c.paragraphCount,
 			b.name
 		FROM paragraphs p 
 		INNER JOIN chapters c ON p.chapterId = c.chapterId 
 		INNER JOIN books b ON c.bookId = b.bookId 
+		INNER JOIN original_paragraphs op ON op.rowid = p.rowid
 		WHERE 1=1
 	`
 	var queryParams []any

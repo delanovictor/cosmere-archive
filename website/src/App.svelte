@@ -28,6 +28,7 @@
     nextParagraph ?: SearchResult
   }
 
+  const BASE_URL = `http://localhost:8080/api`
   const SEARCH_LIMIT = 50
 
 
@@ -188,7 +189,7 @@
           })
         }
 
-        const searchResponse = await fetch(`http://localhost:8080/search`, searchRequestData)
+        const searchResponse = await fetch(`${BASE_URL}/search`, searchRequestData)
 
         if (!searchResponse.ok) {
           console.log(`error`, searchResponse)
@@ -216,7 +217,7 @@
             "paragraphIds" : adjacentParagraphIds
           })
         }
-        const adjacentResponse = await fetch(`http://localhost:8080/adjacent`, adjacentRequestData)
+        const adjacentResponse = await fetch(`${BASE_URL}/adjacent`, adjacentRequestData)
 
         if (!adjacentResponse.ok) {
           console.log(`error`, adjacentResponse)
@@ -252,7 +253,7 @@
           })
         }
 
-        const countResponse = await fetch(`http://localhost:8080/count`, countRequestData)
+        const countResponse = await fetch(`${BASE_URL}/count`, countRequestData)
 
         if (!countResponse.ok) {
           console.log(`error`, countResponse)

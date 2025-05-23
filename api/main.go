@@ -14,19 +14,29 @@ import (
 func main() {
 	fmt.Println("Listening Port 8080!")
 
+	mux := http.NewServeMux()
+
+	fs := http.FileServer(http.Dir("./static"))
+	mux.Handle("/", fs)
+
+	mux.HandleFunc("/api/search", handleSearchRequest)
+	mux.HandleFunc("/api/adjacent", handleAdjacentRequest)
+	mux.HandleFunc("/api/count", handleCountRequest)
+
 	s := &http.Server{
 		Addr:           ":8080",
-		Handler:        http.HandlerFunc(httpHandler),
+		Handler:        mux,
 		ReadTimeout:    10 * time.Second,
 		WriteTimeout:   10 * time.Second,
 		MaxHeaderBytes: 1 << 20,
 	}
 
-	log.Fatal(s.ListenAndServe())
-
+	if err := s.ListenAndServe(); err != nil {
+		panic(err)
+	}
 }
 
-func httpHandler(res http.ResponseWriter, req *http.Request) {
+func handleSearchRequest(res http.ResponseWriter, req *http.Request) {
 
 	if req.Method != "POST" {
 		res.WriteHeader(http.StatusMethodNotAllowed)
@@ -36,20 +46,6 @@ func httpHandler(res http.ResponseWriter, req *http.Request) {
 
 	res.Header().Set("Access-Control-Allow-Origin", "*")
 
-	switch req.RequestURI {
-	case "/search":
-		handleSearchRequest(res, req)
-	case "/adjacent":
-		handleAdjacentRequest(res, req)
-	case "/count":
-		handleCountRequest(res, req)
-	default:
-		res.WriteHeader(http.StatusNotFound)
-		io.WriteString(res, "Route not Found!\n")
-	}
-}
-
-func handleSearchRequest(res http.ResponseWriter, req *http.Request) {
 	decoder := json.NewDecoder(req.Body)
 
 	var body database.SearchRequest
@@ -81,10 +77,17 @@ func handleSearchRequest(res http.ResponseWriter, req *http.Request) {
 	res.Header().Set("Content-Type", "application/json")
 
 	json.NewEncoder(res).Encode(&searchResults)
-
 }
 
 func handleAdjacentRequest(res http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		res.WriteHeader(http.StatusMethodNotAllowed)
+		io.WriteString(res, "Method Not Allowed!\n")
+		return
+	}
+
+	res.Header().Set("Access-Control-Allow-Origin", "*")
+
 	decoder := json.NewDecoder(req.Body)
 
 	var body database.AdjacentRequest
@@ -115,6 +118,14 @@ func handleAdjacentRequest(res http.ResponseWriter, req *http.Request) {
 }
 
 func handleCountRequest(res http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		res.WriteHeader(http.StatusMethodNotAllowed)
+		io.WriteString(res, "Method Not Allowed!\n")
+		return
+	}
+
+	res.Header().Set("Access-Control-Allow-Origin", "*")
+
 	decoder := json.NewDecoder(req.Body)
 
 	var body database.CountRequest
